@@ -65,7 +65,7 @@ export class SimulationEngine {
           eventTitle: config.eventTitle,
           requestedSeats: seats,
           bookingDateTime: now,
-        });
+        }, config.strategy);
 
         this.onActiveSeats(i, false);
 

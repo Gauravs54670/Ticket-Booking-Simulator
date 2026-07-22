@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { ListEventDTO, EventDTO, LogEntry, SimulationConfig } from '@/types';
+import type { ListEventDTO, EventDTO, LogEntry, SimulationConfig, LockStrategy } from '@/types';
 import { getAllEvents, getEvent, checkBackendHealth } from '@/lib/api';
 import { SimulationEngine } from '@/lib/simulator';
 import Header from '@/components/Header';
@@ -13,6 +13,7 @@ import styles from './page.module.css';
 const DEFAULT_CONFIG = {
   threadCount: 10,
   seatsPerBooking: 1,
+  strategy: 'NO_LOCK' as LockStrategy,
 };
 
 const MAX_LOGS = 500;
@@ -138,7 +139,7 @@ export default function HomePage() {
         id: crypto.randomUUID(),
         timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
         threadName: 'System',
-        message: `▶ Burst Simulation started — Firing ${config.threadCount} concurrent requests, ${config.seatsPerBooking} seat(s)/req`,
+        message: `▶ Burst Simulation started — ${config.strategy === 'NO_LOCK' ? '🔓 No Lock' : '🔒 ReentrantLock'} | ${config.threadCount} concurrent requests, ${config.seatsPerBooking} seat(s)/req`,
         level: 'info',
       },
     ]);
@@ -178,7 +179,7 @@ export default function HomePage() {
   }, []);
 
   const handleConfigChange = useCallback(
-    (key: keyof typeof DEFAULT_CONFIG, value: number) =>
+    (key: keyof typeof DEFAULT_CONFIG, value: number | string) =>
       setConfig((prev) => ({ ...prev, [key]: value })),
     []
   );

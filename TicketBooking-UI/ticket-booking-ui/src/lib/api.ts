@@ -3,9 +3,16 @@ import type {
   EventDTO,
   SeatBookingRequest,
   TicketBookingDTO,
+  LockStrategy,
 } from '@/types';
 
 const BASE_URL = 'http://localhost:8080/api/ticket-booking';
+
+/** Map each strategy to its backend endpoint path */
+const STRATEGY_ENDPOINTS: Record<LockStrategy, string> = {
+  NO_LOCK: 'book-normal-event',
+  REENTRANT_LOCK: 'book-reentrant-lock-event',
+};
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -54,13 +61,15 @@ export async function getEvent(eventId: number): Promise<EventDTO> {
   return data.response;
 }
 
-/** POST /book-normal-event/:id */
+/** POST /book-{strategy}-event/:id — routes to the correct endpoint based on strategy */
 export async function bookEvent(
   eventId: number,
-  body: SeatBookingRequest
+  body: SeatBookingRequest,
+  strategy: LockStrategy = 'NO_LOCK'
 ): Promise<TicketBookingDTO> {
+  const endpoint = STRATEGY_ENDPOINTS[strategy];
   const data = await request<{ response: TicketBookingDTO }>(
-    `${BASE_URL}/book-normal-event/${eventId}`,
+    `${BASE_URL}/${endpoint}/${eventId}`,
     { method: 'POST', body: JSON.stringify(body) }
   );
   return data.response;

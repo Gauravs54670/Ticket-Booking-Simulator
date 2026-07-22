@@ -51,9 +51,12 @@ export interface LogEntry {
   level: LogLevel;
 }
 
+export type LockStrategy = 'NO_LOCK' | 'REENTRANT_LOCK';
+
 export interface SimulationConfig {
   threadCount: number;
   seatsPerBooking: number;
+  strategy: LockStrategy;
   eventId: number;
   eventTitle: string;
   initialAvailableSeats: number;

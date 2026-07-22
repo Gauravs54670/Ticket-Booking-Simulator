@@ -1,14 +1,19 @@
 'use client';
-import type { SimulationConfig } from '@/types';
+import type { SimulationConfig, LockStrategy } from '@/types';
 import styles from './SimulationController.module.css';
+
+const STRATEGY_OPTIONS: { value: LockStrategy; label: string; description: string }[] = [
+  { value: 'NO_LOCK', label: '🔓 No Lock', description: 'Race condition — overbooking possible' },
+  { value: 'REENTRANT_LOCK', label: '🔒 ReentrantLock', description: 'Mutual exclusion — thread-safe' },
+];
 
 interface SimulationControllerProps {
   config: Omit<SimulationConfig, 'eventId' | 'eventTitle' | 'initialAvailableSeats'>;
-  onChange: (key: keyof Omit<SimulationConfig, 'eventId' | 'eventTitle' | 'initialAvailableSeats'>, value: number) => void;
+  onChange: (key: keyof Omit<SimulationConfig, 'eventId' | 'eventTitle' | 'initialAvailableSeats'>, value: number | string) => void;
   running: boolean;
   canStart: boolean;
   onStart: () => void;
-  onStop: () => void; // Kept for prop compatibility but not used
+  onStop: () => void;
   onReset: () => void;
 }
 
@@ -20,6 +25,8 @@ export default function SimulationController({
   onStart,
   onReset,
 }: SimulationControllerProps) {
+  const activeStrategy = STRATEGY_OPTIONS.find((s) => s.value === config.strategy);
+
   return (
     <div className={`card ${styles.card}`}>
       {/* ── Title row ──────────────── */}
@@ -35,6 +42,27 @@ export default function SimulationController({
       </div>
 
       <div className={styles.grid}>
+        {/* ── Strategy Selector ───────────── */}
+        <div className={styles.controlItem}>
+          <div className={styles.controlLabel}>Concurrency Strategy</div>
+          <div className={styles.strategyRow}>
+            {STRATEGY_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={`${styles.strategyBtn} ${config.strategy === opt.value ? styles.strategyActive : ''}`}
+                onClick={() => onChange('strategy', opt.value)}
+                disabled={running}
+                title={opt.description}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {activeStrategy && (
+            <span className={styles.strategyHint}>{activeStrategy.description}</span>
+          )}
+        </div>
+
         {/* ── Threads ───────────────────── */}
         <div className={styles.controlItem}>
           <div className={styles.controlLabel}>

@@ -53,6 +53,47 @@
   gap: 16px;
 }
 
+/* ── Strategy toggle buttons ─── */
+.strategyRow {
+  display: flex;
+  gap: 6px;
+}
+
+.strategyBtn {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.strategyBtn:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--border-2);
+  color: var(--text);
+}
+
+.strategyActive {
+  background: var(--accent-soft) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.strategyBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.strategyHint {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
 .controlItem { display: flex; flex-direction: column; gap: 8px; }
 
 .controlLabel {
