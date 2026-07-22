@@ -13,4 +13,6 @@ public class TicketBookingDTO {
     private String bookingThread;
     private String bookingStatus;
     private int seatsBooked;
+    private int leftSeats;
+    private String message;
 }

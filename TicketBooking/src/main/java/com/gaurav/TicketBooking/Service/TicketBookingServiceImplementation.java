@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -54,10 +55,31 @@ public class TicketBookingServiceImplementation implements TicketBookingService 
     }
 
     @Override
+    public List<ListEventDTO> getAllEvents() {
+        log.info("{} start getting all events executing", Thread.currentThread().getName());
+        return this.normalEventEntityRepository.findAllActiveEvents(LocalDateTime.now());
+    }
+
+    @Override
+    public EventDTO getEvent(int eventId) {
+        return this.normalEventEntityRepository.findEvent(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found."));
+    }
+
+    @Override
     public TicketBookingDTO bookNormalEvent(int eventId, SeatBookingRequest bookingRequest) {
         log.info(Thread.currentThread().getName(), "start booking ticket executing");
         NormalEventEntity event = this.normalEventEntityRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found."));
+        
+        // Intentionally simulate a processing delay to allow concurrent requests to read stale state, 
+        // demonstrating the overbooking / race condition behavior that this simulator is designed to show.
+        try {
+            Thread.sleep(150);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
         if(bookingRequest.getBookingDateTime().toLocalDate().isAfter(event.getEventDateTime().toLocalDate()))
             throw new RuntimeException("Request can't be completed. Event already completed.");
         if(event.getLeftSeats() <= 0) throw new RuntimeException("Event HouseFull. No more registration");
@@ -81,7 +103,14 @@ public class TicketBookingServiceImplementation implements TicketBookingService 
                 .bookingThread(seatBooking.getThreadName())
                 .seatsBooked(seatBooking.getRequestedSeats())
                 .bookingStatus(seatBooking.getBookingStatus().toString())
+                .leftSeats(event.getLeftSeats())
+                .message("Event Booked by " + Thread.currentThread().getName())
                 .build();
+    }
+    @Override
+    public TicketBookingDTO bookReentrantLockEvent(int eventId, SeatBookingRequest bookingRequest) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'bookReentrantLockEvent'");
     }
 
 }
