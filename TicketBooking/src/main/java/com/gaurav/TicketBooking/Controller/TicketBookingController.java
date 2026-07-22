@@ -39,6 +39,22 @@ public class TicketBookingController {
             ), HttpStatus.BAD_REQUEST);
         }
     }
+    @PostMapping("/book-reentrant-lock-event/{eventId}")
+    public ResponseEntity<?> bookReentrantLocking(@PathVariable int eventId, @RequestBody SeatBookingRequest request) {
+        try {
+            TicketBookingDTO response = this.ticketBookingService.bookReentrantLockEvent(eventId, request
+            );
+            return new ResponseEntity<>(Map.of(
+                    "message", "Event Booked",
+                    "response", response
+            ), HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(Map.of(
+                    "message", "Booking failed",
+                    "error", e.getMessage()
+            ), HttpStatus.BAD_REQUEST);
+        }
+    }
     @GetMapping("/get-all")
     public ResponseEntity<?> getAllEvents() {
         List<ListEventDTO> eventDTOS = this.ticketBookingService.getAllEvents();

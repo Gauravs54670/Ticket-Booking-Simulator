@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Service
@@ -16,17 +17,22 @@ public class TicketBookingServiceImplementation implements TicketBookingService 
 
     private final NormalEventEntityRepository normalEventEntityRepository;
     private final NormalSeatBookingRepository normalSeatBookingRepository;
+
+    // Class-level lock — all threads share this SINGLE instance because Spring's @Service is a singleton
+    private final ReentrantLock reentrantLock = new ReentrantLock();
+
     public TicketBookingServiceImplementation(
-        NormalEventEntityRepository normalEventEntityRepository,
-        NormalSeatBookingRepository normalSeatBookingRepository) {
-            this.normalEventEntityRepository = normalEventEntityRepository;
-            this.normalSeatBookingRepository = normalSeatBookingRepository;
+            NormalEventEntityRepository normalEventEntityRepository,
+            NormalSeatBookingRepository normalSeatBookingRepository) {
+        this.normalEventEntityRepository = normalEventEntityRepository;
+        this.normalSeatBookingRepository = normalSeatBookingRepository;
     }
+
     // register event
     @Override
     public EventRegistrationResponse registerForEvent(EventRegistrationRequest request) {
         log.info("{} start executing.", Thread.currentThread().getName());
-        if(request.getEventDatetime().toLocalDate().isBefore(LocalDateTime.now().toLocalDate())){
+        if (request.getEventDatetime().toLocalDate().isBefore(LocalDateTime.now().toLocalDate())) {
             throw new RuntimeException("Event date is before current date");
         }
         NormalEventEntity eventEntity = NormalEventEntity.builder()
@@ -71,19 +77,22 @@ public class TicketBookingServiceImplementation implements TicketBookingService 
         log.info(Thread.currentThread().getName(), "start booking ticket executing");
         NormalEventEntity event = this.normalEventEntityRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found."));
-        
-        // Intentionally simulate a processing delay to allow concurrent requests to read stale state, 
-        // demonstrating the overbooking / race condition behavior that this simulator is designed to show.
+
+        // Intentionally simulate a processing delay to allow concurrent requests to
+        // read stale state,
+        // demonstrating the overbooking / race condition behavior that this simulator
+        // is designed to show.
         try {
             Thread.sleep(150);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
 
-        if(bookingRequest.getBookingDateTime().toLocalDate().isAfter(event.getEventDateTime().toLocalDate()))
+        if (bookingRequest.getBookingDateTime().toLocalDate().isAfter(event.getEventDateTime().toLocalDate()))
             throw new RuntimeException("Request can't be completed. Event already completed.");
-        if(event.getLeftSeats() <= 0) throw new RuntimeException("Event HouseFull. No more registration");
-        if(bookingRequest.getRequestedSeats() > event.getLeftSeats())
+        if (event.getLeftSeats() <= 0)
+            throw new RuntimeException("Event HouseFull. No more registration");
+        if (bookingRequest.getRequestedSeats() > event.getLeftSeats())
             throw new RuntimeException("Request can't be completed. Requested seats can not be assign.");
         NormalSeatBooking seatBooking = NormalSeatBooking.builder()
                 .eventEntity(event)
@@ -95,7 +104,8 @@ public class TicketBookingServiceImplementation implements TicketBookingService 
         this.normalSeatBookingRepository.save(seatBooking);
         event.setLeftSeats(event.getLeftSeats() - bookingRequest.getRequestedSeats());
         event.setTotalTicketsBooked(event.getTotalTicketsBooked() + bookingRequest.getRequestedSeats());
-        event.setTotalRevenue(event.getTotalRevenue() + (bookingRequest.getRequestedSeats() * event.getAmountPerTicket()));
+        event.setTotalRevenue(
+                event.getTotalRevenue() + (bookingRequest.getRequestedSeats() * event.getAmountPerTicket()));
         this.normalEventEntityRepository.save(event);
         return TicketBookingDTO.builder()
                 .eventId(event.getEventId())
@@ -107,10 +117,64 @@ public class TicketBookingServiceImplementation implements TicketBookingService 
                 .message("Event Booked by " + Thread.currentThread().getName())
                 .build();
     }
+
     @Override
     public TicketBookingDTO bookReentrantLockEvent(int eventId, SeatBookingRequest bookingRequest) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'bookReentrantLockEvent'");
+        log.info("{} : waiting to acquire ReentrantLock", Thread.currentThread().getName());
+        
+        reentrantLock.lock(); //Thread blocks here until it gets the lock
+        log.info("{} : acquired ReentrantLock — entering critical section", Thread.currentThread().getName());
+        try {
+            // thread safe seat booking logic
+            NormalEventEntity event = this.normalEventEntityRepository.findById(eventId)
+                    .orElseThrow(() -> new RuntimeException("Event not found."));
+
+            // Simulate processing delay
+            try {
+                Thread.sleep(150);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            if (bookingRequest.getBookingDateTime().toLocalDate().isAfter(event.getEventDateTime().toLocalDate()))
+                throw new RuntimeException("Request can't be completed. Event already completed.");
+            if (event.getLeftSeats() <= 0)
+                throw new RuntimeException("Event HouseFull. No more registration");
+            if (bookingRequest.getRequestedSeats() > event.getLeftSeats())
+                throw new RuntimeException("Request can't be completed. Requested seats can not be assign.");
+
+            NormalSeatBooking seatBooking = NormalSeatBooking.builder()
+                    .eventEntity(event)
+                    .requestedSeats(bookingRequest.getRequestedSeats())
+                    .threadName(Thread.currentThread().getName())
+                    .bookingStatus(BookingStatus.SUCCESS)
+                    .bookedAt(bookingRequest.getBookingDateTime())
+                    .build();
+            this.normalSeatBookingRepository.save(seatBooking);
+
+            event.setLeftSeats(event.getLeftSeats() - bookingRequest.getRequestedSeats());
+            event.setTotalTicketsBooked(event.getTotalTicketsBooked() + bookingRequest.getRequestedSeats());
+            event.setTotalRevenue(
+                    event.getTotalRevenue() + (bookingRequest.getRequestedSeats() * event.getAmountPerTicket()));
+            this.normalEventEntityRepository.save(event);
+
+            log.info("{} : booked {} seat(s), leftSeats = {}", Thread.currentThread().getName(),
+                    bookingRequest.getRequestedSeats(), event.getLeftSeats());
+
+            return TicketBookingDTO.builder()
+                    .eventId(event.getEventId())
+                    .bookingId(seatBooking.getBookingId())
+                    .bookingThread(seatBooking.getThreadName())
+                    .seatsBooked(seatBooking.getRequestedSeats())
+                    .bookingStatus(seatBooking.getBookingStatus().toString())
+                    .leftSeats(event.getLeftSeats())
+                    .message("[ReentrantLock] Booked by " + Thread.currentThread().getName()
+                            + " | Left Seats: " + event.getLeftSeats())
+                    .build();
+        } finally {
+            reentrantLock.unlock(); // ALWAYS release in finally — prevents deadlock on exceptions
+            log.info("{} : released ReentrantLock", Thread.currentThread().getName());
+        }
     }
 
 }
