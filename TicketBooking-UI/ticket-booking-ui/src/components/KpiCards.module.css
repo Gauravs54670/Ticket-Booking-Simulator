@@ -1,0 +1,92 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .grid { grid-template-columns: 1fr; } }
+
+/* ─── Card ─────────────────── */
+.card {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: transform var(--transition), box-shadow var(--transition);
+  animation: fadeIn 300ms ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+}
+
+/* Accent border top */
+.purple { border-top: 2px solid var(--accent); }
+.green  { border-top: 2px solid var(--green); }
+.blue   { border-top: 2px solid var(--blue); }
+.red    { border-top: 2px solid var(--red); }
+
+/* Card hover glow */
+.purple:hover { box-shadow: 0 8px 32px var(--accent-glow); }
+.green:hover  { box-shadow: 0 8px 32px var(--green-glow); }
+.blue:hover   { box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2); }
+.red:hover    { box-shadow: 0 8px 32px var(--red-glow); }
+
+/* ─── Glow BG ──────────────── */
+.glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.purple .glow { background: var(--accent); }
+.green  .glow { background: var(--green); }
+.blue   .glow { background: var(--blue); }
+.red    .glow { background: var(--red); }
+
+/* ─── Icon ─────────────────── */
+.cardIcon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+/* ─── Body ─────────────────── */
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cardLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cardValue {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  animation: countUp 200ms ease;
+}
+
+.cardSub {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}

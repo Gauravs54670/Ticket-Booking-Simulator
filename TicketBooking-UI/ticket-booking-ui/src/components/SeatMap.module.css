@@ -1,0 +1,144 @@
+.wrap { display: flex; flex-direction: column; gap: 14px; }
+
+.mapHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.stats { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.available { color: var(--green); }
+.active    { color: var(--yellow); }
+.booked    { color: var(--red); }
+
+.statItem .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ─── Progress ────────────────────── */
+.progressWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--red) 100%);
+  border-radius: 99px;
+  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progressLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: right;
+}
+
+/* ─── Seat Grid ───────────────────── */
+.grid {
+  display: grid;
+  gap: 3px;
+  padding: 4px;
+}
+
+.seat {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  cursor: default;
+}
+
+.seat:hover { transform: scale(1.4); z-index: 2; }
+
+.seat.available {
+  background: var(--green);
+  opacity: 0.85;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.3);
+}
+
+.seat.booked {
+  background: var(--red);
+  opacity: 0.8;
+}
+
+.seat.active {
+  background: var(--yellow);
+  animation: pulse-ring 1s infinite;
+}
+
+/* ─── Legend ─────────────────────── */
+.legend {
+  display: flex;
+  gap: 16px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.availableDot { background: var(--green); }
+.activeDot { background: var(--yellow); }
+.bookedDot { background: var(--red); }
+
+/* ─── Empty / Truncation ─────────── */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.truncNote {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: -6px;
+}

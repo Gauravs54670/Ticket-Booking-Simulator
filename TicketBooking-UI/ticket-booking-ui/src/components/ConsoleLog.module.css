@@ -1,0 +1,132 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.consoleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* macOS traffic lights */
+.trafficLights { display: flex; gap: 6px; align-items: center; }
+
+.tlRed, .tlYellow, .tlGreen {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.tlRed    { background: #ff5f57; }
+.tlYellow { background: #febc2e; }
+.tlGreen  { background: #28c840; }
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.logCount {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--surface-3);
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+
+.clearBtn {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+/* ─── Terminal ────────────────── */
+.terminal {
+  background: #09090f;
+  border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 14px 16px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.logLine {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  animation: fadeIn 100ms ease;
+}
+
+.timestamp {
+  color: #374151;
+  font-size: 10px;
+  flex-shrink: 0;
+  min-width: 68px;
+}
+
+.threadTag {
+  color: #6366f1;
+  font-weight: 600;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.prefix {
+  font-weight: 700;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.message {
+  flex: 1;
+  word-break: break-word;
+  font-size: 12px;
+}
+
+/* ─── Empty State ────────────── */
+.emptyTerminal {
+  color: #2d3748;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  padding: 20px 0;
+}
+
+.cursor {
+  animation: blink 1s infinite;
+  color: #4b5563;
+}
+
+.levelinfo { color: #d1d5db; }
+.levelsuccess { color: #4ade80; }
+.levelerror { color: #f87171; }
+.levelwarn { color: #fbbf24; }
+.leveloverbooked {
+  color: #ff3b30;
+  font-weight: 800;
+  background: rgba(255, 59, 48, 0.15);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+.emptyMsg { color: #374151; }
