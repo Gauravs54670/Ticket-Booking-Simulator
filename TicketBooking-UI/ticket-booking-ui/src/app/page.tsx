@@ -62,8 +62,8 @@ export default function HomePage() {
 
   useEffect(() => {
     loadEvents();
-    // Poll list every 5 seconds to catch new registrations
-    listPollRef.current = setInterval(loadEvents, 5_000);
+    // Poll list every 15 seconds to catch new registrations
+    listPollRef.current = setInterval(loadEvents, 15_000);
     return () => { if (listPollRef.current) clearInterval(listPollRef.current); };
   }, [loadEvents]);
 
@@ -74,6 +74,11 @@ export default function HomePage() {
     try {
       const detail = await getEvent(eventId);
       setActiveEvent(detail);
+      if (detail.eventType === 'CONCURRENT_EVENT') {
+        setConfig((c) => ({ ...c, strategy: 'OPTIMISTIC_LOCK' }));
+      } else if (detail.eventType === 'NORMAL_EVENT') {
+        setConfig((c) => ({ ...c, strategy: 'NO_LOCK' }));
+      }
     } catch {
       // ignore
     } finally {
@@ -139,7 +144,7 @@ export default function HomePage() {
         id: crypto.randomUUID(),
         timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
         threadName: 'System',
-        message: `▶ Burst Simulation started — ${config.strategy === 'NO_LOCK' ? '🔓 No Lock' : '🔒 ReentrantLock'} | ${config.threadCount} concurrent requests, ${config.seatsPerBooking} seat(s)/req`,
+        message: `▶ Burst Simulation started — ${config.strategy === 'NO_LOCK' ? '🔓 No Lock' : config.strategy === 'REENTRANT_LOCK' ? '🔒 ReentrantLock' : '🤞 Optimistic Lock'} | ${config.threadCount} concurrent requests, ${config.seatsPerBooking} seat(s)/req`,
         level: 'info',
       },
     ]);
@@ -222,6 +227,7 @@ export default function HomePage() {
               onStart={handleStart}
               onStop={handleStop}
               onReset={handleReset}
+              eventType={activeEvent?.eventType}
             />
           </div>
         </div>

@@ -77,7 +77,7 @@ export default function EventList({
 
             return (
               <button
-                key={ev.eventId}
+                key={`${ev.eventType}-${ev.eventId}`}
                 className={`${styles.card} ${isActive ? styles.activeCard : ''} ${isFull ? styles.fullCard : ''}`}
                 onClick={() => {
                   if (isActive) { onDeselect(); return; }
@@ -93,6 +93,9 @@ export default function EventList({
                   <div className={styles.cardTop}>
                     <span className={styles.eventId}>#{ev.eventId}</span>
                     <span className={styles.eventTitle}>{ev.eventTitle}</span>
+                    <span className={`${styles.typeBadge} ${ev.eventType === 'NORMAL_EVENT' ? styles.typeNormal : styles.typeConcurrent}`}>
+                      {ev.eventType === 'NORMAL_EVENT' ? 'Normal' : 'Optimistic'}
+                    </span>
                   </div>
 
                   <div className={styles.cardBottom}>
@@ -126,9 +129,10 @@ export default function EventList({
           <div className={styles.detailDesc}>{activeEvent.eventDescription}</div>
           <div className={styles.detailMeta}>
             <span>📍 {activeEvent.eventVenue}</span>
-            <span>🗓 {new Date(activeEvent.eventDateTime).toLocaleString()}</span>
+            <span>🗓 {new Date(activeEvent.eventDateTime || activeEvent.eventDatetime || '').toLocaleString()}</span>
             <span>💺 {activeEvent.leftSeats}/{activeEvent.totalSeats} seats</span>
-            <span>💰 ₹{activeEvent.amountPerTicket}/seat</span>
+            <span>💰 ₹{activeEvent.amountPerTicket ?? activeEvent.perTicketPrice}/seat</span>
+            <span>🔒 {activeEvent.eventType === 'NORMAL_EVENT' ? 'Normal/Pessimistic' : 'Optimistic Locking'}</span>
           </div>
           <div className={styles.detailBar}>
             <div

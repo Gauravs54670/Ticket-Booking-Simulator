@@ -5,6 +5,7 @@ import styles from './SimulationController.module.css';
 const STRATEGY_OPTIONS: { value: LockStrategy; label: string; description: string }[] = [
   { value: 'NO_LOCK', label: '🔓 No Lock', description: 'Race condition — overbooking possible' },
   { value: 'REENTRANT_LOCK', label: '🔒 ReentrantLock', description: 'Mutual exclusion — thread-safe' },
+  { value: 'OPTIMISTIC_LOCK', label: '🤞 Optimistic', description: 'Version check — concurrent failures' },
 ];
 
 interface SimulationControllerProps {
@@ -15,6 +16,7 @@ interface SimulationControllerProps {
   onStart: () => void;
   onStop: () => void;
   onReset: () => void;
+  eventType?: string;
 }
 
 export default function SimulationController({
@@ -24,6 +26,7 @@ export default function SimulationController({
   canStart,
   onStart,
   onReset,
+  eventType,
 }: SimulationControllerProps) {
   const activeStrategy = STRATEGY_OPTIONS.find((s) => s.value === config.strategy);
 
@@ -46,17 +49,25 @@ export default function SimulationController({
         <div className={styles.controlItem}>
           <div className={styles.controlLabel}>Concurrency Strategy</div>
           <div className={styles.strategyRow}>
-            {STRATEGY_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                className={`${styles.strategyBtn} ${config.strategy === opt.value ? styles.strategyActive : ''}`}
-                onClick={() => onChange('strategy', opt.value)}
-                disabled={running}
-                title={opt.description}
-              >
-                {opt.label}
-              </button>
-            ))}
+            {STRATEGY_OPTIONS.map((opt) => {
+              const isNormalOnly = opt.value === 'NO_LOCK' || opt.value === 'REENTRANT_LOCK';
+              const isOptimisticOnly = opt.value === 'OPTIMISTIC_LOCK';
+              const isDisabled = running || 
+                (eventType === 'CONCURRENT_EVENT' && isNormalOnly) ||
+                (eventType === 'NORMAL_EVENT' && isOptimisticOnly);
+
+              return (
+                <button
+                  key={opt.value}
+                  className={`${styles.strategyBtn} ${config.strategy === opt.value ? styles.strategyActive : ''}`}
+                  onClick={() => onChange('strategy', opt.value)}
+                  disabled={isDisabled}
+                  title={opt.description}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
           {activeStrategy && (
             <span className={styles.strategyHint}>{activeStrategy.description}</span>

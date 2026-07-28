@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { EventRegistrationRequest } from '@/types';
-import { registerEvent } from '@/lib/api';
+import { registerEvent, registerOptimisticEvent } from '@/lib/api';
 import styles from './RegisterEventCard.module.css';
 
 interface RegisterEventCardProps {
@@ -22,6 +22,7 @@ export default function RegisterEventCard({ onSuccess }: RegisterEventCardProps)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isOptimistic, setIsOptimistic] = useState(false);
 
   const set = (key: keyof EventRegistrationRequest, value: string | number) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -33,7 +34,12 @@ export default function RegisterEventCard({ onSuccess }: RegisterEventCardProps)
     setLoading(true);
     try {
       const isoDatetime = new Date(form.eventDatetime).toISOString().replace('Z', '');
-      await registerEvent({ ...form, eventDatetime: isoDatetime });
+      const payload = { ...form, eventDatetime: isoDatetime };
+      if (isOptimistic) {
+        await registerOptimisticEvent(payload);
+      } else {
+        await registerEvent(payload);
+      }
       setForm(defaultForm);
       setSuccess(true);
       onSuccess();
@@ -53,6 +59,21 @@ export default function RegisterEventCard({ onSuccess }: RegisterEventCardProps)
       </div>
 
       <form onSubmit={handleSubmit} className={styles.form}>
+        <div className={styles.row}>
+          <div className={styles.field} style={{ flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+            <input 
+              type="checkbox" 
+              id="isOptimistic"
+              checked={isOptimistic}
+              onChange={(e) => setIsOptimistic(e.target.checked)}
+              style={{ width: 'auto' }}
+            />
+            <label htmlFor="isOptimistic" style={{ marginBottom: 0, cursor: 'pointer' }}>
+              Create as Optimistic Event (for Optimistic Locking)
+            </label>
+          </div>
+        </div>
+
         <div className={styles.field}>
           <label htmlFor="eventTitle">Event Title</label>
           <input

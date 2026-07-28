@@ -1,6 +1,7 @@
 export interface ListEventDTO {
   eventId: number;
   eventTitle: string;
+  eventType: string;
   leftSeats: number;
 }
 
@@ -8,11 +9,13 @@ export interface EventDTO {
   eventId: number;
   eventTitle: string;
   eventDescription: string;
-  eventDateTime: string;
+  eventDateTime?: string;
+  eventDatetime?: string;
   eventVenue: string;
   totalSeats: number;
   leftSeats: number;
-  amountPerTicket: number;
+  amountPerTicket?: number;
+  perTicketPrice?: number;
   eventType: string;
 }
 
@@ -51,7 +54,7 @@ export interface LogEntry {
   level: LogLevel;
 }
 
-export type LockStrategy = 'NO_LOCK' | 'REENTRANT_LOCK';
+export type LockStrategy = 'NO_LOCK' | 'REENTRANT_LOCK' | 'OPTIMISTIC_LOCK';
 
 export interface SimulationConfig {
   threadCount: number;

@@ -12,6 +12,7 @@ const BASE_URL = 'http://localhost:8080/api/ticket-booking';
 const STRATEGY_ENDPOINTS: Record<LockStrategy, string> = {
   NO_LOCK: 'book-normal-event',
   REENTRANT_LOCK: 'book-reentrant-lock-event',
+  OPTIMISTIC_LOCK: 'book-optimistic-event',
 };
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -42,6 +43,14 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export async function registerEvent(body: any): Promise<any> {
   const data = await request<{ response: any }>(
     `${BASE_URL}/register-event`,
+    { method: 'POST', body: JSON.stringify(body) }
+  );
+  return data.response;
+}
+
+export async function registerOptimisticEvent(body: any): Promise<any> {
+  const data = await request<{ response: any }>(
+    `${BASE_URL}/register-optimistic-event`,
     { method: 'POST', body: JSON.stringify(body) }
   );
   return data.response;
