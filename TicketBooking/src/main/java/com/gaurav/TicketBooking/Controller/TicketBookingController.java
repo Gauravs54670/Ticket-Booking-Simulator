@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.ConnectException;
 import java.util.List;
 import java.util.Map;
 
@@ -80,11 +81,16 @@ public class TicketBookingController {
     }
     @GetMapping("/get-all")
     public ResponseEntity<?> getAllEvents() {
-        List<EventDTOList> eventDTOS = this.ticketBookingService.getAllEvents();
-        return new ResponseEntity<>(Map.of(
-                "message", "Events list fetched",
-                "response", eventDTOS
-        ),HttpStatus.OK);
+        try {
+            List<EventDTOList> eventDTOS = this.ticketBookingService.getAllEvents();
+            return new ResponseEntity<>(Map.of(
+                    "message", "Events list fetched",
+                    "response", eventDTOS
+            ),HttpStatus.OK);
+        }
+        catch (Exception ex) {
+            throw new RuntimeException("Failed to retrieve events. Details: " + ex.getMessage(), ex);
+        }
     }
     @GetMapping("get-event/{eventId}")
     public ResponseEntity<?> getEvent(@PathVariable int eventId) {

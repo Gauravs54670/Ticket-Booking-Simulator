@@ -7,9 +7,11 @@ import com.gaurav.TicketBooking.Repository.OptimisticEventRepository;
 
 import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,18 +22,20 @@ import java.util.concurrent.locks.ReentrantLock;
 public class TicketBookingServiceImplementation implements TicketBookingService {
 
     private final ReentrantLock reentrantLock = new ReentrantLock();
+    private final RedisTemplate<String, Object> redisTemplate;
     private final NormalEventEntityRepository normalEventRepository;
     private final OptimisticEventRepository optimisticEventRepository;
     private final SeatBookingRepository seatBookingRepository;
     public TicketBookingServiceImplementation(
+            RedisTemplate<String, Object> redisTemplate,
             NormalEventEntityRepository normalEventRepository,
             OptimisticEventRepository optimisticEventRepository,
             SeatBookingRepository seatBookingRepository) {
         this.normalEventRepository = normalEventRepository;
         this.optimisticEventRepository = optimisticEventRepository;
         this.seatBookingRepository = seatBookingRepository;
+        this.redisTemplate = redisTemplate;
     }
-
 
     @Override
     public EventRegistrationResponse registerForNormalEvent(EventRegistrationRequest request) {
@@ -97,13 +101,39 @@ public class TicketBookingServiceImplementation implements TicketBookingService 
         }
     }
 
+    private final long cacheDuration = 2 * 60 * 1000; // 2 minutes
+    @SuppressWarnings({ "unchecked"})
     @Override
     public List<EventDTOList> getAllEvents() {
-        List<EventDTOList> normalEventDTOs = this.normalEventRepository.findAllActiveEvents(LocalDateTime.now());
-        List<EventDTOList> optimisticEventDTOs = this.optimisticEventRepository.findAllActiveEvents(LocalDateTime.now());
-        List<EventDTOList> eventDTOs = new ArrayList<>();
-        eventDTOs.addAll(normalEventDTOs);
-        eventDTOs.addAll(optimisticEventDTOs);
+        //    key for fetching the list of events
+        String EVENT_LIST_REDIS_KEY = "EVENTS_LIST";
+        List<EventDTOList> eventDTOs = null;
+        try {
+            eventDTOs = (List<EventDTOList>) redisTemplate.opsForValue().get(EVENT_LIST_REDIS_KEY);
+        } catch (Exception e) {
+            log.error("Failed to read from Redis cache. Evicting key '{}' due to: {}", EVENT_LIST_REDIS_KEY, e.getMessage());
+            try {
+                redisTemplate.delete(EVENT_LIST_REDIS_KEY);
+            } catch (Exception delEx) {
+                log.error("Failed to delete corrupted Redis key", delEx);
+            }
+        }
+        if(eventDTOs == null || eventDTOs.isEmpty()) {
+            eventDTOs = new ArrayList<>();
+            List<EventDTOList> normalEventDTOs = this.normalEventRepository.findAllActiveEvents(LocalDateTime.now());
+            List<EventDTOList> optimisticEventDTOs = this.optimisticEventRepository.findAllActiveEvents(LocalDateTime.now());
+            if(normalEventDTOs != null && !normalEventDTOs.isEmpty()) {
+                eventDTOs.addAll(normalEventDTOs);
+            }
+            if(optimisticEventDTOs != null && !optimisticEventDTOs.isEmpty()) {
+                eventDTOs.addAll(optimisticEventDTOs);
+            }
+            try {
+                redisTemplate.opsForValue().set(EVENT_LIST_REDIS_KEY, eventDTOs, Duration.ofMillis(cacheDuration));
+            } catch (Exception ex) {
+                log.error("Failed to write to Redis cache", ex);
+            }
+        }
         return eventDTOs;
     }
 
