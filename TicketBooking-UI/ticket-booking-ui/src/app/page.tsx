@@ -8,6 +8,8 @@ import EventList from '@/components/EventList';
 import RegisterEventCard from '@/components/RegisterEventCard';
 import SimulationController from '@/components/SimulationController';
 import ConsoleLog from '@/components/ConsoleLog';
+import SeatMap from '@/components/SeatMap';
+import KpiCards, { type DashboardMetrics } from '@/components/KpiCards';
 import styles from './page.module.css';
 
 const DEFAULT_CONFIG = {
@@ -34,6 +36,8 @@ export default function HomePage() {
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [activeThreads, setActiveThreads] = useState(0);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
 
   const engineRef = useRef<SimulationEngine | null>(null);
   const listPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -74,6 +78,8 @@ export default function HomePage() {
     try {
       const detail = await getEvent(eventId);
       setActiveEvent(detail);
+      setMetrics(null);
+      setActiveThreads(0);
       if (detail.eventType === 'CONCURRENT_EVENT') {
         setConfig((c) => ({ ...c, strategy: 'OPTIMISTIC_LOCK' }));
       } else if (detail.eventType === 'NORMAL_EVENT') {
@@ -88,6 +94,8 @@ export default function HomePage() {
 
   const handleDeselect = useCallback(() => {
     setActiveEvent(null);
+    setMetrics(null);
+    setActiveThreads(0);
   }, []);
 
   // ─── Poll active event every 2 seconds during simulation ─────────
@@ -122,8 +130,10 @@ export default function HomePage() {
         }),
       (_result, _seatsBooked) => {},   // no KPI state needed
       () => {},
-      () => {},
-      () => {}
+      (_threadIdx, active) => {
+        setActiveThreads((prev) => Math.max(0, active ? prev + 1 : prev - 1));
+      },
+      (newMetrics) => setMetrics(newMetrics)
     );
     engineRef.current = engine;
     return () => engine.stop();
@@ -138,6 +148,7 @@ export default function HomePage() {
       initialAvailableSeats: activeEvent.leftSeats,
     };
     setRunning(true);
+    setMetrics(null);
     setLogs((prev) => [
       ...prev,
       {
@@ -181,6 +192,8 @@ export default function HomePage() {
 
   const handleReset = useCallback(() => {
     setLogs([]);
+    setMetrics(null);
+    setActiveThreads(0);
   }, []);
 
   const handleConfigChange = useCallback(
@@ -195,12 +208,12 @@ export default function HomePage() {
       <main className={styles.main}>
         <div className={styles.layout}>
           {/* ── Top Left: Register Event ── */}
-          <div className={styles.cell}>
+          <div className={`${styles.cell} ${styles.cellTop}`}>
             <RegisterEventCard onSuccess={loadEvents} />
           </div>
 
           {/* ── Top Right: Event List ── */}
-          <div className={`${styles.cell} ${styles.scrollable}`}>
+          <div className={`${styles.cell} ${styles.scrollable} ${styles.cellTop}`}>
             <EventList
               events={events}
               activeEvent={activeEvent}
@@ -212,13 +225,31 @@ export default function HomePage() {
             />
           </div>
 
+          {/* ── Conditional Seat Map (Full Width) ── */}
+          {activeEvent && (
+            <div className={`${styles.cell} ${styles.fullWidth}`}>
+              <SeatMap
+                totalSeats={activeEvent.totalSeats}
+                leftSeats={activeEvent.leftSeats}
+                activeThreadCount={activeThreads}
+              />
+            </div>
+          )}
+
+          {/* ── Conditional KPI Cards (Full Width) ── */}
+          {metrics && (
+            <div className={`${styles.cell} ${styles.fullWidth}`}>
+              <KpiCards metrics={metrics} />
+            </div>
+          )}
+
           {/* ── Bottom Left: Console Log ── */}
-          <div className={styles.cell}>
+          <div className={`${styles.cell} ${styles.cellBottom}`}>
             <ConsoleLog logs={logs} onClear={handleReset} />
           </div>
 
           {/* ── Bottom Right: Simulation Controller ── */}
-          <div className={styles.cell}>
+          <div className={`${styles.cell} ${styles.cellBottom}`}>
             <SimulationController
               config={config}
               onChange={handleConfigChange}

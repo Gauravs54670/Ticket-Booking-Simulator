@@ -15,11 +15,16 @@ export default function SeatMap({ totalSeats, leftSeats, activeThreadCount }: Se
 
   const seats: SeatState[] = useMemo(() => {
     const arr: SeatState[] = [];
+    const availableSeatsCount = totalSeats - bookedSeats;
+    const interval = activeThreadCount > 0 ? Math.max(1, Math.floor(availableSeatsCount / activeThreadCount)) : 1;
+    let activeAssigned = 0;
+
     for (let i = 0; i < totalSeats; i++) {
       if (i < bookedSeats) {
         arr.push('booked');
-      } else if (i < bookedSeats + activeThreadCount && activeThreadCount > 0) {
+      } else if (activeThreadCount > 0 && activeAssigned < activeThreadCount && (i - bookedSeats) % interval === 0) {
         arr.push('active');
+        activeAssigned++;
       } else {
         arr.push('available');
       }

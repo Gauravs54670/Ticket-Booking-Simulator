@@ -9,9 +9,24 @@
 .layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 460px 350px;
+  grid-auto-rows: min-content;
   gap: 24px;
   align-items: stretch;
+}
+
+.cellTop {
+  height: 460px;
+  min-height: 0;
+}
+
+.cellBottom {
+  height: 350px;
+  max-height: 350px;
+  min-height: 0;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
 }
 
 .cell {
