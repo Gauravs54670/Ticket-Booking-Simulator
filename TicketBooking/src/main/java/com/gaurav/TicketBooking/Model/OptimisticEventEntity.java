@@ -11,20 +11,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.Version;
+import lombok.*;
 
-@Getter
-@Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Getter
+@Setter
 @Builder
-@Table(name = "normal_event_entity")
+@Table(name = "optimistic_event_entity")
 @Entity
-public class NormalEventEntity {
+public class OptimisticEventEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "event_seq")
     @SequenceGenerator(name = "event_seq", sequenceName = "EVENT_SEQUENCE", allocationSize = 1)
@@ -41,5 +38,6 @@ public class NormalEventEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type")
     private EventType eventType;
-
+    @Version
+    private int version;
 }

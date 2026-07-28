@@ -4,18 +4,17 @@ import java.time.LocalDateTime;
 
 import lombok.*;
 
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
 @Builder
-@AllArgsConstructor
-@NoArgsConstructor
 public class EventRegistrationResponse {
     private int eventId;
     private String eventTitle;
     private String eventDescription;
-    private LocalDateTime eventDatetime;
+    private LocalDateTime eventDateTime;
     private String eventVenue;
     private int totalSeats;
-    private double ticketAmountPerSeat;
-    private String eventType;
+    private int leftSeats;
 }

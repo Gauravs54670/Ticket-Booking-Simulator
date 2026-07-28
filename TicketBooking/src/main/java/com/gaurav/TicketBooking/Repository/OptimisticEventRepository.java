@@ -3,16 +3,15 @@ package com.gaurav.TicketBooking.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-
+import com.gaurav.TicketBooking.Model.EventDTO;
+import com.gaurav.TicketBooking.Model.EventDTOList;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.gaurav.TicketBooking.Model.EventDTO;
-import com.gaurav.TicketBooking.Model.EventDTOList;
-import com.gaurav.TicketBooking.Model.NormalEventEntity;
+import com.gaurav.TicketBooking.Model.OptimisticEventEntity;
 
-public interface NormalEventEntityRepository extends JpaRepository<NormalEventEntity, Integer> {
+public interface OptimisticEventRepository extends JpaRepository<OptimisticEventEntity, Integer> {
     @Query("""
                SELECT new com.gaurav.TicketBooking.Model.EventDTOList(
                    event.eventId,
@@ -20,7 +19,7 @@ public interface NormalEventEntityRepository extends JpaRepository<NormalEventEn
                    event.eventType,
                    event.leftSeats
                )
-               FROM NormalEventEntity event
+               FROM OptimisticEventEntity event
                WHERE event.eventDateTime >= :currentTime
                ORDER BY event.eventDateTime
                """)
@@ -38,8 +37,9 @@ public interface NormalEventEntityRepository extends JpaRepository<NormalEventEn
                    event.perTicketPrice,
                    event.eventType
                )
-               FROM NormalEventEntity event
+               FROM OptimisticEventEntity event
                WHERE event.eventId = :eventId
                """)
        Optional<EventDTO> findEvent(@Param("eventId") int eventId);
 }
+

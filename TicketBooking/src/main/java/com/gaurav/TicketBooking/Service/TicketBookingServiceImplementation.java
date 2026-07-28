@@ -2,12 +2,16 @@ package com.gaurav.TicketBooking.Service;
 
 import com.gaurav.TicketBooking.Model.*;
 import com.gaurav.TicketBooking.Repository.NormalEventEntityRepository;
-import com.gaurav.TicketBooking.Repository.NormalSeatBookingRepository;
+import com.gaurav.TicketBooking.Repository.SeatBookingRepository;
+import com.gaurav.TicketBooking.Repository.OptimisticEventRepository;
 
+import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -15,165 +19,221 @@ import java.util.concurrent.locks.ReentrantLock;
 @Service
 public class TicketBookingServiceImplementation implements TicketBookingService {
 
-    private final NormalEventEntityRepository normalEventEntityRepository;
-    private final NormalSeatBookingRepository normalSeatBookingRepository;
-
-    // Class-level lock — all threads share this SINGLE instance because Spring's @Service is a singleton
     private final ReentrantLock reentrantLock = new ReentrantLock();
-
+    private final NormalEventEntityRepository normalEventRepository;
+    private final OptimisticEventRepository optimisticEventRepository;
+    private final SeatBookingRepository seatBookingRepository;
     public TicketBookingServiceImplementation(
-            NormalEventEntityRepository normalEventEntityRepository,
-            NormalSeatBookingRepository normalSeatBookingRepository) {
-        this.normalEventEntityRepository = normalEventEntityRepository;
-        this.normalSeatBookingRepository = normalSeatBookingRepository;
+            NormalEventEntityRepository normalEventRepository,
+            OptimisticEventRepository optimisticEventRepository,
+            SeatBookingRepository seatBookingRepository) {
+        this.normalEventRepository = normalEventRepository;
+        this.optimisticEventRepository = optimisticEventRepository;
+        this.seatBookingRepository = seatBookingRepository;
     }
 
-    // register event
+
     @Override
-    public EventRegistrationResponse registerForEvent(EventRegistrationRequest request) {
-        log.info("{} start executing.", Thread.currentThread().getName());
-        if (request.getEventDatetime().toLocalDate().isBefore(LocalDateTime.now().toLocalDate())) {
-            throw new RuntimeException("Event date is before current date");
+    public EventRegistrationResponse registerForNormalEvent(EventRegistrationRequest request) {
+        log.info("Normal Event Registration Starts...");
+        try {
+            NormalEventEntity event = NormalEventEntity.builder()
+                    .eventTitle(request.getEventTitle())
+                    .eventDescription(request.getEventDescription())
+                    .eventDateTime(request.getEventDateTime())
+                    .eventVenue(request.getEventVenue())
+                    .totalSeats(request.getTotalSeats())
+                    .leftSeats(request.getTotalSeats())
+                    .perTicketPrice(request.getPerTicketPrice() != null ? request.getPerTicketPrice() : 0.0)
+                    .totalTicketsBooked(0)
+                    .totalRevenue(0.0)
+                    .eventType(EventType.NORMAL_EVENT)
+                    .build();
+            event = this.normalEventRepository.save(event);
+            return EventRegistrationResponse.builder()
+                    .eventId(event.getEventId())
+                    .eventTitle(event.getEventTitle())
+                    .eventDescription(event.getEventDescription())
+                    .eventDateTime(event.getEventDateTime())
+                    .eventVenue(event.getEventVenue())
+                    .totalSeats(event.getTotalSeats())
+                    .leftSeats(event.getLeftSeats())
+                    .build();
         }
-        NormalEventEntity eventEntity = NormalEventEntity.builder()
-                .eventTitle(request.getEventTitle())
-                .eventDescription(request.getEventDescription())
-                .eventDateTime(request.getEventDatetime())
-                .eventVenue(request.getEventVenue())
-                .totalSeats(request.getTotalSeats())
-                .leftSeats(request.getTotalSeats())
-                .amountPerTicket(request.getAmountPerTicket())
-                .totalTicketsBooked(0)
-                .totalRevenue(0)
-                .eventType(EventType.NORMAL_EVENT)
-                .build();
-        eventEntity = this.normalEventEntityRepository.save(eventEntity);
-        return EventRegistrationResponse.builder()
-                .eventId(eventEntity.getEventId())
-                .eventTitle(eventEntity.getEventTitle())
-                .eventDescription(eventEntity.getEventDescription())
-                .eventDatetime(eventEntity.getEventDateTime())
-                .eventVenue(eventEntity.getEventVenue())
-                .totalSeats(eventEntity.getTotalSeats())
-                .ticketAmountPerSeat(eventEntity.getAmountPerTicket())
-                .eventType(eventEntity.getEventType().toString())
-                .build();
+        catch (Exception e) {
+            throw new RuntimeException("Failed to register normal event." + e.getMessage());
+        }
     }
 
     @Override
-    public List<ListEventDTO> getAllEvents() {
-        log.info("{} start getting all events executing", Thread.currentThread().getName());
-        return this.normalEventEntityRepository.findAllActiveEvents(LocalDateTime.now());
+    public EventRegistrationResponse registerForOptimisticEvent(EventRegistrationRequest request) {
+        log.info("Optimistic Event Registration Starts....");
+        try {
+            OptimisticEventEntity event = OptimisticEventEntity.builder()
+                    .eventTitle(request.getEventTitle())
+                    .eventDescription(request.getEventDescription())
+                    .eventDateTime(request.getEventDateTime())
+                    .eventVenue(request.getEventVenue())
+                    .totalSeats(request.getTotalSeats())
+                    .leftSeats(request.getTotalSeats())
+                    .perTicketPrice(request.getPerTicketPrice() != null ? request.getPerTicketPrice() : 0.0)
+                    .totalTicketsBooked(0)
+                    .totalRevenue(0.0)
+                    .eventType(EventType.CONCURRENT_EVENT)
+                    .build();
+            event = this.optimisticEventRepository.save(event);
+            return EventRegistrationResponse.builder()
+                    .eventId(event.getEventId())
+                    .eventTitle(event.getEventTitle())
+                    .eventDescription(event.getEventDescription())
+                    .eventDateTime(event.getEventDateTime())
+                    .eventVenue(event.getEventVenue())
+                    .totalSeats(event.getTotalSeats())
+                    .leftSeats(event.getLeftSeats())
+                    .build();
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to register Optimistic Event." + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<EventDTOList> getAllEvents() {
+        List<EventDTOList> normalEventDTOs = this.normalEventRepository.findAllActiveEvents(LocalDateTime.now());
+        List<EventDTOList> optimisticEventDTOs = this.optimisticEventRepository.findAllActiveEvents(LocalDateTime.now());
+        List<EventDTOList> eventDTOs = new ArrayList<>();
+        eventDTOs.addAll(normalEventDTOs);
+        eventDTOs.addAll(optimisticEventDTOs);
+        return eventDTOs;
     }
 
     @Override
     public EventDTO getEvent(int eventId) {
-        return this.normalEventEntityRepository.findEvent(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found."));
+        return this.normalEventRepository.findEvent(eventId)
+            .orElseGet(() -> this.optimisticEventRepository.findEvent(eventId)
+                                .orElseThrow(() -> new RuntimeException("Event not found.")));
     }
 
     @Override
     public TicketBookingDTO bookNormalEvent(int eventId, SeatBookingRequest bookingRequest) {
-        log.info(Thread.currentThread().getName(), "start booking ticket executing");
-        NormalEventEntity event = this.normalEventEntityRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found."));
-
-        // Intentionally simulate a processing delay to allow concurrent requests to
-        // read stale state,
-        // demonstrating the overbooking / race condition behavior that this simulator
-        // is designed to show.
-        try {
-            Thread.sleep(150);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        if (bookingRequest.getBookingDateTime().toLocalDate().isAfter(event.getEventDateTime().toLocalDate()))
-            throw new RuntimeException("Request can't be completed. Event already completed.");
-        if (event.getLeftSeats() <= 0)
-            throw new RuntimeException("Event HouseFull. No more registration");
-        if (bookingRequest.getRequestedSeats() > event.getLeftSeats())
-            throw new RuntimeException("Request can't be completed. Requested seats can not be assign.");
-        NormalSeatBooking seatBooking = NormalSeatBooking.builder()
-                .eventEntity(event)
-                .requestedSeats(bookingRequest.getRequestedSeats())
-                .threadName(Thread.currentThread().getName())
-                .bookingStatus(BookingStatus.SUCCESS)
-                .bookedAt(bookingRequest.getBookingDateTime())
-                .build();
-        this.normalSeatBookingRepository.save(seatBooking);
+        NormalEventEntity event = this.normalEventRepository.findById(eventId)
+            .orElseThrow(() -> new RuntimeException("Event not found or a different Event Type i.e; CONCURRENT EVENT."));
+        if(event.getLeftSeats() <= 0)
+            throw new RuntimeException("Booking Failed. Seats already booked.");
+        if(event.getLeftSeats() < bookingRequest.getRequestedSeats())
+            throw new RuntimeException("Can not complete the request. Left seats " + event.getLeftSeats());
         event.setLeftSeats(event.getLeftSeats() - bookingRequest.getRequestedSeats());
         event.setTotalTicketsBooked(event.getTotalTicketsBooked() + bookingRequest.getRequestedSeats());
-        event.setTotalRevenue(
-                event.getTotalRevenue() + (bookingRequest.getRequestedSeats() * event.getAmountPerTicket()));
-        this.normalEventEntityRepository.save(event);
+        event.setTotalRevenue(event.getTotalRevenue() + (bookingRequest.getRequestedSeats() * event.getPerTicketPrice()));
+        this.normalEventRepository.save(event);
+        BookingEntity booking = BookingEntity.builder()
+                .threadName(Thread.currentThread().getName())
+                .eventId(eventId)
+                .requestedSeats(bookingRequest.getRequestedSeats())
+                .bookedAt(LocalDateTime.now())
+                .bookingStatus(BookingStatus.SUCCESS)
+                .bookingType(BookingType.NORMAL)
+                .build();
+        this.seatBookingRepository.save(booking);
         return TicketBookingDTO.builder()
-                .eventId(event.getEventId())
-                .bookingId(seatBooking.getBookingId())
-                .bookingThread(seatBooking.getThreadName())
-                .seatsBooked(seatBooking.getRequestedSeats())
-                .bookingStatus(seatBooking.getBookingStatus().toString())
+                .bookingId(booking.getBookingId())
+                .eventId(booking.getEventId())
+                .bookingThread(booking.getThreadName())
+                .bookingStatus(booking.getBookingStatus().name())
+                .seatsBooked(booking.getRequestedSeats())
                 .leftSeats(event.getLeftSeats())
-                .message("Event Booked by " + Thread.currentThread().getName())
+                .message(bookingRequest.getRequestedSeats() + " is booked. Thread name is " + booking.getThreadName())
                 .build();
     }
 
     @Override
     public TicketBookingDTO bookReentrantLockEvent(int eventId, SeatBookingRequest bookingRequest) {
-        log.info("{} : waiting to acquire ReentrantLock", Thread.currentThread().getName());
-        
-        reentrantLock.lock(); //Thread blocks here until it gets the lock
-        log.info("{} : acquired ReentrantLock — entering critical section", Thread.currentThread().getName());
+        log.info(Thread.currentThread().getName() ," Starts executing ReentrantLock Event Registration");
         try {
-            // thread safe seat booking logic
-            NormalEventEntity event = this.normalEventEntityRepository.findById(eventId)
-                    .orElseThrow(() -> new RuntimeException("Event not found."));
-
-            // Simulate processing delay
-            try {
-                Thread.sleep(150);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-
-            if (bookingRequest.getBookingDateTime().toLocalDate().isAfter(event.getEventDateTime().toLocalDate()))
-                throw new RuntimeException("Request can't be completed. Event already completed.");
-            if (event.getLeftSeats() <= 0)
-                throw new RuntimeException("Event HouseFull. No more registration");
-            if (bookingRequest.getRequestedSeats() > event.getLeftSeats())
-                throw new RuntimeException("Request can't be completed. Requested seats can not be assign.");
-
-            NormalSeatBooking seatBooking = NormalSeatBooking.builder()
-                    .eventEntity(event)
-                    .requestedSeats(bookingRequest.getRequestedSeats())
-                    .threadName(Thread.currentThread().getName())
-                    .bookingStatus(BookingStatus.SUCCESS)
-                    .bookedAt(bookingRequest.getBookingDateTime())
-                    .build();
-            this.normalSeatBookingRepository.save(seatBooking);
-
+            reentrantLock.lock();
+            NormalEventEntity event = this.normalEventRepository.findById(eventId)
+                    .orElseThrow(() -> new RuntimeException("Event not found for booking Reentrant Locked Event."));
+            if(event.getLeftSeats() <= 0)
+                throw new RuntimeException("Booking Failed. Seats already booked.");
+            if(event.getLeftSeats() < bookingRequest.getRequestedSeats())
+                throw new RuntimeException("Can not complete the request. Left seats " + event.getLeftSeats());
             event.setLeftSeats(event.getLeftSeats() - bookingRequest.getRequestedSeats());
             event.setTotalTicketsBooked(event.getTotalTicketsBooked() + bookingRequest.getRequestedSeats());
-            event.setTotalRevenue(
-                    event.getTotalRevenue() + (bookingRequest.getRequestedSeats() * event.getAmountPerTicket()));
-            this.normalEventEntityRepository.save(event);
-
-            log.info("{} : booked {} seat(s), leftSeats = {}", Thread.currentThread().getName(),
-                    bookingRequest.getRequestedSeats(), event.getLeftSeats());
-
-            return TicketBookingDTO.builder()
-                    .eventId(event.getEventId())
-                    .bookingId(seatBooking.getBookingId())
-                    .bookingThread(seatBooking.getThreadName())
-                    .seatsBooked(seatBooking.getRequestedSeats())
-                    .bookingStatus(seatBooking.getBookingStatus().toString())
-                    .leftSeats(event.getLeftSeats())
-                    .message("[ReentrantLock] Booked by " + Thread.currentThread().getName()
-                            + " | Left Seats: " + event.getLeftSeats())
+            event.setTotalRevenue(event.getTotalRevenue() + (bookingRequest.getRequestedSeats() * event.getPerTicketPrice()));
+            this.normalEventRepository.save(event);
+            BookingEntity booking = BookingEntity.builder()
+                    .threadName(Thread.currentThread().getName())
+                    .eventId(eventId)
+                    .requestedSeats(bookingRequest.getRequestedSeats())
+                    .bookedAt(LocalDateTime.now())
+                    .bookingStatus(BookingStatus.SUCCESS)
+                    .bookingType(BookingType.PESSIMISTIC)
                     .build();
-        } finally {
-            reentrantLock.unlock(); // ALWAYS release in finally — prevents deadlock on exceptions
-            log.info("{} : released ReentrantLock", Thread.currentThread().getName());
+            this.seatBookingRepository.save(booking);
+            return TicketBookingDTO.builder()
+                    .bookingId(booking.getBookingId())
+                    .eventId(booking.getEventId())
+                    .bookingThread(booking.getThreadName())
+                    .bookingStatus(booking.getBookingStatus().name())
+                    .seatsBooked(booking.getRequestedSeats())
+                    .leftSeats(event.getLeftSeats())
+                    .message(bookingRequest.getRequestedSeats() + " is booked. Thread name is " + booking.getThreadName())
+                    .build();
+        }
+        finally {
+            reentrantLock.unlock();
+        }
+    }
+    @Override
+    public TicketBookingDTO bookOptimisticEvent(int eventId, SeatBookingRequest bookingRequest) {
+        log.info(Thread.currentThread().getName(), "Starts executing the Optimistic event booking.");
+        int attemptCount = 0;
+        int maxAttempts = 3;
+        while(true) {
+            try {
+                OptimisticEventEntity event = this.optimisticEventRepository.findById(eventId)
+                        .orElseThrow(() -> new RuntimeException("Event not found for booking Optimistic Event."));
+                if(event.getLeftSeats() <= 0)
+                    throw new RuntimeException("Booking Failed. Seats already booked.");
+                if(event.getLeftSeats() < bookingRequest.getRequestedSeats())
+                    throw new RuntimeException("Can not complete the request. Left seats " + event.getLeftSeats());
+                event.setLeftSeats(event.getLeftSeats() - bookingRequest.getRequestedSeats());
+                event.setTotalTicketsBooked(event.getTotalTicketsBooked() + bookingRequest.getRequestedSeats());
+                event.setTotalRevenue(event.getTotalRevenue() + (bookingRequest.getRequestedSeats() * event.getPerTicketPrice()));
+                this.optimisticEventRepository.save(event);
+                BookingEntity booking = BookingEntity.builder()
+                        .threadName(Thread.currentThread().getName())
+                        .eventId(eventId)
+                        .requestedSeats(bookingRequest.getRequestedSeats())
+                        .bookedAt(LocalDateTime.now())
+                        .bookingStatus(BookingStatus.SUCCESS)
+                        .bookingType(BookingType.OPTIMISTIC)
+                        .build();
+                this.seatBookingRepository.save(booking);
+                return TicketBookingDTO.builder()
+                        .bookingId(booking.getBookingId())
+                        .eventId(booking.getEventId())
+                        .bookingThread(booking.getThreadName())
+                        .bookingStatus(booking.getBookingStatus().name())
+                        .seatsBooked(booking.getRequestedSeats())
+                        .leftSeats(event.getLeftSeats())
+                        .message(bookingRequest.getRequestedSeats() + " is booked. Thread name is " + booking.getThreadName())
+                        .build();
+            }
+            catch (ObjectOptimisticLockingFailureException | OptimisticLockException ex) {
+                attemptCount++;
+                if (attemptCount > maxAttempts)
+                    throw new RuntimeException("Booking failed after " + maxAttempts + 
+                                        " attempts due to concurrent updates. "+ex.getMessage());
+                else {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Thread sleep interrupted. " + e);
+                    }
+                }
+            }
         }
     }
 

@@ -1,20 +1,21 @@
 package com.gaurav.TicketBooking.Model;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-@Getter
-@Setter
+import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
+@Getter
+@Setter
+@Builder
 public class EventRegistrationRequest {
     private String eventTitle;
     private String eventDescription;
-    private LocalDateTime eventDatetime;
     private String eventVenue;
+    @JsonProperty("eventDatetime")
+    private LocalDateTime eventDateTime;
+    @JsonProperty("amountPerTicket")
+    private Double perTicketPrice;
     private int totalSeats;
-    private double amountPerTicket;
 }

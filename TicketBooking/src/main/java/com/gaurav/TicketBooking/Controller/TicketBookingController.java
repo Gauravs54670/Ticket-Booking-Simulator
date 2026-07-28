@@ -18,7 +18,7 @@ public class TicketBookingController {
     }
     @PostMapping("/register-event")
     public ResponseEntity<?> registerNormalEvent(@RequestBody EventRegistrationRequest request) {
-        EventRegistrationResponse response = this.ticketBookingService.registerForEvent(request);
+        EventRegistrationResponse response = this.ticketBookingService.registerForNormalEvent(request);
         return new ResponseEntity<>(Map.of(
                 "message", "Event Registered",
                 "response", response
@@ -55,9 +55,32 @@ public class TicketBookingController {
             ), HttpStatus.BAD_REQUEST);
         }
     }
+    @PostMapping("/register-optimistic-event")
+    public ResponseEntity<?> registerOptimisticEvent(@RequestBody EventRegistrationRequest request) {
+        EventRegistrationResponse response = this.ticketBookingService.registerForOptimisticEvent(request);
+        return new ResponseEntity<>(Map.of(
+                "message", "Optimistic Event Registered",
+                "response", response
+        ), HttpStatus.OK);
+    }
+    @PostMapping("/book-optimistic-event/{eventId}")
+    public ResponseEntity<?> bookOptimisticEvent(@PathVariable int eventId, @RequestBody SeatBookingRequest request) {
+        try {
+            TicketBookingDTO response = this.ticketBookingService.bookOptimisticEvent(eventId, request);
+            return new ResponseEntity<>(Map.of(
+                    "message", "Event Booked",
+                    "response", response
+            ), HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(Map.of(
+                    "message", "Booking failed",
+                    "error", e.getMessage()
+            ), HttpStatus.BAD_REQUEST);
+        }
+    }
     @GetMapping("/get-all")
     public ResponseEntity<?> getAllEvents() {
-        List<ListEventDTO> eventDTOS = this.ticketBookingService.getAllEvents();
+        List<EventDTOList> eventDTOS = this.ticketBookingService.getAllEvents();
         return new ResponseEntity<>(Map.of(
                 "message", "Events list fetched",
                 "response", eventDTOS

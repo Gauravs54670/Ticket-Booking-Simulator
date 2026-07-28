@@ -15,6 +15,7 @@ import java.util.List;
 @Configuration
 public class TicketBookingConfiguration {
 
+    @SuppressWarnings("null")
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.csrf(AbstractHttpConfigurer::disable);
