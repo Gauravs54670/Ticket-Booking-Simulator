@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.ConnectException;
 import java.util.List;
 import java.util.Map;
 
@@ -77,6 +76,36 @@ public class TicketBookingController {
                     "message", "Booking failed",
                     "error", e.getMessage()
             ), HttpStatus.BAD_REQUEST);
+        }
+    }
+    @PostMapping("/book-read-write-lock-event/{eventId}")
+    public ResponseEntity<?> bookReadWriteLockEvent(@PathVariable int eventId, @RequestBody SeatBookingRequest request) {
+        try {
+            TicketBookingDTO response = this.ticketBookingService.bookReadWriteLockEvent(eventId, request);
+            return new ResponseEntity<>(Map.of(
+                    "message", "Event Booked with ReadWriteLock",
+                    "response", response
+            ), HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(Map.of(
+                    "message", "Booking failed",
+                    "error", e.getMessage()
+            ), HttpStatus.BAD_REQUEST);
+        }
+    }
+    @GetMapping("/audit-logs")
+    public ResponseEntity<?> getBookingAuditLogs() {
+        try {
+            List<String> logs = this.ticketBookingService.getBookingAuditLogs();
+            return new ResponseEntity<>(Map.of(
+                    "message", "Audit logs fetched",
+                    "response", logs
+            ), HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(Map.of(
+                    "message", "Failed to fetch audit logs",
+                    "error", e.getMessage()
+            ), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
     @GetMapping("/get-all")

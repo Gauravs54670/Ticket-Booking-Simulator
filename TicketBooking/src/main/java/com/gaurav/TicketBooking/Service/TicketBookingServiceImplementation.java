@@ -16,12 +16,15 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Slf4j
 @Service
 public class TicketBookingServiceImplementation implements TicketBookingService {
 
     private final ReentrantLock reentrantLock = new ReentrantLock();
+    private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    private final NioAuditLogger nioAuditLogger;
     private final RedisTemplate<String, Object> redisTemplate;
     private final NormalEventEntityRepository normalEventRepository;
     private final OptimisticEventRepository optimisticEventRepository;
@@ -30,11 +33,13 @@ public class TicketBookingServiceImplementation implements TicketBookingService 
             RedisTemplate<String, Object> redisTemplate,
             NormalEventEntityRepository normalEventRepository,
             OptimisticEventRepository optimisticEventRepository,
-            SeatBookingRepository seatBookingRepository) {
+            SeatBookingRepository seatBookingRepository,
+            NioAuditLogger nioAuditLogger) {
         this.normalEventRepository = normalEventRepository;
         this.optimisticEventRepository = optimisticEventRepository;
         this.seatBookingRepository = seatBookingRepository;
         this.redisTemplate = redisTemplate;
+        this.nioAuditLogger = nioAuditLogger;
     }
 
     @Override
@@ -264,6 +269,62 @@ public class TicketBookingServiceImplementation implements TicketBookingService 
                     }
                 }
             }
+        }
+    }
+
+    @Override
+    public TicketBookingDTO bookReadWriteLockEvent(int eventId, SeatBookingRequest bookingRequest) {
+        log.info(Thread.currentThread().getName() + " Starts executing ReentrantReadWriteLock Event Registration");
+        try {
+            readWriteLock.writeLock().lock();
+            NormalEventEntity event = this.normalEventRepository.findById(eventId)
+                    .orElseThrow(() -> new RuntimeException("Event not found for booking Read-Write Locked Event."));
+            if(event.getLeftSeats() <= 0)
+                throw new RuntimeException("Booking Failed. Seats already booked.");
+            if(event.getLeftSeats() < bookingRequest.getRequestedSeats())
+                throw new RuntimeException("Can not complete the request. Left seats " + event.getLeftSeats());
+            event.setLeftSeats(event.getLeftSeats() - bookingRequest.getRequestedSeats());
+            event.setTotalTicketsBooked(event.getTotalTicketsBooked() + bookingRequest.getRequestedSeats());
+            event.setTotalRevenue(event.getTotalRevenue() + (bookingRequest.getRequestedSeats() * event.getPerTicketPrice()));
+            this.normalEventRepository.save(event);
+            BookingEntity booking = BookingEntity.builder()
+                    .threadName(Thread.currentThread().getName())
+                    .eventId(eventId)
+                    .requestedSeats(bookingRequest.getRequestedSeats())
+                    .bookedAt(LocalDateTime.now())
+                    .bookingStatus(BookingStatus.SUCCESS)
+                    .bookingType(BookingType.READ_WRITE_LOCK)
+                    .build();
+            this.seatBookingRepository.save(booking);
+
+            // NIO Logger call inside write lock
+            String logMsg = String.format("[%s] Thread '%s' booked %d seats for event ID %d (Remaining seats: %d)",
+                    LocalDateTime.now(), booking.getThreadName(), booking.getRequestedSeats(), eventId, event.getLeftSeats());
+            nioAuditLogger.writeLog(logMsg);
+
+            return TicketBookingDTO.builder()
+                    .bookingId(booking.getBookingId())
+                    .eventId(booking.getEventId())
+                    .bookingThread(booking.getThreadName())
+                    .bookingStatus(booking.getBookingStatus().name())
+                    .seatsBooked(booking.getRequestedSeats())
+                    .leftSeats(event.getLeftSeats())
+                    .message(bookingRequest.getRequestedSeats() + " is booked. Thread name is " + booking.getThreadName())
+                    .build();
+        }
+        finally {
+            readWriteLock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public List<String> getBookingAuditLogs() {
+        log.info(Thread.currentThread().getName() + " reading audit logs under Read Lock");
+        try {
+            readWriteLock.readLock().lock();
+            return nioAuditLogger.readLogs();
+        } finally {
+            readWriteLock.readLock().unlock();
         }
     }
 

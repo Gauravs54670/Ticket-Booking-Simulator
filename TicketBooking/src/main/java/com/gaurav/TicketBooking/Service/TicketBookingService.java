@@ -12,4 +12,6 @@ public interface TicketBookingService {
     TicketBookingDTO bookNormalEvent(int eventId, SeatBookingRequest bookingRequest);
     TicketBookingDTO bookReentrantLockEvent(int eventId, SeatBookingRequest bookingRequest);
     TicketBookingDTO bookOptimisticEvent(int eventId, SeatBookingRequest bookingRequest);
+    TicketBookingDTO bookReadWriteLockEvent(int eventId, SeatBookingRequest bookingRequest);
+    List<String> getBookingAuditLogs();
 }
